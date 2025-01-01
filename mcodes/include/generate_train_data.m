@@ -1,7 +1,7 @@
 % Convert HS dataset to patches
 
 % List all '.mat' file in folder
-file_folder=fullfile('.\train');
+file_folder=fullfile('.','train');
 file_list=dir(fullfile(file_folder,'*.mat'));
 file_names={file_list.name};
 

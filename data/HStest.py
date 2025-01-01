@@ -5,12 +5,14 @@ import torch
 
 
 class HSTestData(data.Dataset):
+    # def __init__(self, image_dir, use_3D=False):
+    #     test_data = sio.loadmat(image_dir)
+    #     self.use_3Dconv = use_3D
+    #     self.ms = np.array(test_data['ms'][...], dtype=np.float32)
+    #     self.lms = np.array(test_data['ms_bicubic'][...], dtype=np.float32)
+    #     self.gt = np.array(test_data['gt'][...], dtype=np.float32)
     def __init__(self, image_dir, use_3D=False):
-        test_data = sio.loadmat(image_dir)
-        self.use_3Dconv = use_3D
-        self.ms = np.array(test_data['ms'][...], dtype=np.float32)
-        self.lms = np.array(test_data['ms_bicubic'][...], dtype=np.float32)
-        self.gt = np.array(test_data['gt'][...], dtype=np.float32)
+        self.ms, self.lms, self.gt = preprocess(image_dir, use_3D=use_3D)
 
     def __getitem__(self, index):
         gt = self.gt[index, :, :, :]

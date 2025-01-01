@@ -11,9 +11,12 @@ import torch.backends.cudnn as cudnn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
+import time
 from torchnet import meter
 import utils
 import json
+from datetime import datetime
 
 from data import HSTrainingData
 from data import HSTestData
@@ -62,6 +65,7 @@ def main():
     test_parser.add_argument("--gpus", type=str, default="0,1", help="gpu ids (default: 7)")
     # test_parser.add_argument("--test_dir", type=str, required=True, help="directory of testset")
     # test_parser.add_argument("--model_dir", type=str, required=True, help="directory of trained model")
+    import pdb;pdb.set_trace()
 
     args = main_parser.parse_args()
     print(args.gpus)
@@ -73,6 +77,11 @@ def main():
         print("ERROR: cuda is not available, try running on CPU")
         sys.exit(1)
     if args.subcommand == "train":
+        # for i in range(len(dataset)):
+        #     try:
+        #         dataset[i]
+        #     except Exception as e:
+        #         print(f"Error at index {i}: {e}")
         train(args)
     else:
         test(args)
@@ -88,15 +97,16 @@ def train(args):
     cudnn.benchmark = True
 
     print('===> Loading datasets')
-    train_path    = './dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/trains/'
-    eval_path     = './dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/evals/'
-    result_path   = './dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/tests/'
-    test_data_dir = './dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/'+args.dataset_name+'_test.mat'
+    train_path    = './mcodes/dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/trains/'
+    eval_path     = './mcodes/dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/evals/'
+    result_path   = './mcodes/dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/tests/'
+    test_data_dir = './mcodes/dataset/'+args.dataset_name+'_x'+str(args.n_scale)+'/'+args.dataset_name+'_test.mat'
     
     train_set = HSTrainingData(image_dir=train_path, augment=True)
     eval_set = HSTrainingData(image_dir=eval_path, augment=False)
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=8, shuffle=True)
-    eval_loader = DataLoader(eval_set, batch_size=args.batch_size, num_workers=4, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=8, shuffle=True, drop_last=True)
+    eval_loader = DataLoader(eval_set, batch_size=args.batch_size, num_workers=4, shuffle=False,drop_last=True)
+    # eval_loader = DataLoader(eval_set, batch_size=args.batch_size, collate_fn=collate_fn, num_workers=4, shuffle=False, drop_last=True)
 
 
     if args.dataset_name=='Cave':
@@ -110,9 +120,8 @@ def train(args):
     net = SSPSR(n_subs=args.n_subs, n_ovls=args.n_ovls, n_colors=colors, n_blocks=args.n_blocks, n_feats=args.n_feats, n_scale=args.n_scale, res_scale=0.1, use_share=args.use_share, conv=default_conv)
     # print(net)  
     model_title = args.dataset_name + "_" + args.model_title +'_Blocks='+str(args.n_blocks)+'_Subs'+str(args.n_subs)+'_Ovls'+str(args.n_ovls)+'_Feats='+str(args.n_feats)
-    model_name = './checkpoints/' + model_title + "_ckpt_epoch_" + str(40) + ".pth"
+    model_name = './checkpoints/' + model_title + "_ckpt_epoch_" + str(1) + ".pth"
     args.model_title = model_title
-    
     if torch.cuda.device_count() > 1:
         print("===> Let's use", torch.cuda.device_count(), "GPUs.")
         net = torch.nn.DataParallel(net)
@@ -133,12 +142,16 @@ def train(args):
     # hylap_loss = HyLapLoss(spatial_tv=False, spectral_tv=True)
     L1_loss = torch.nn.L1Loss()
 
+
+
+
     print("===> Setting optimizer and logger")
     # add L2 regularization
     optimizer = Adam(net.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     epoch_meter = meter.AverageValueMeter()
-    writer = SummaryWriter('runs/'+model_title+'_'+str(time.ctime()))
-    
+    # writer = SummaryWriter('runs/'+model_title+'_'+str(time.ctime()))
+    sanitized_time = time.strftime("%Y-%m-%d_%H-%M-%S")
+    writer = SummaryWriter(f"runs/{model_title}_{sanitized_time}")
     print('===> Start training')
     for e in range(start_epoch, args.epochs):
         adjust_learning_rate(args.learning_rate, optimizer, e+1)
@@ -167,13 +180,15 @@ def train(args):
         writer.add_scalar('scalar/avg_epoch_loss', epoch_meter.value()[0], e + 1)
         writer.add_scalar('scalar/avg_validation_loss', eval_loss, e + 1)
         # save model weights at checkpoints every 10 epochs
-        if (e + 1) % 5 == 0:
-            save_checkpoint(args, net, e+1)
+        # if (e + 1) % 5 == 0:
+        #     save_checkpoint(args, net, e+1)
+        save_checkpoint(args, net, e+1)
 
     # save model after training
     net.eval().cpu()
-    save_model_filename = model_title + "_epoch_" + str(args.epochs) + "_" + \
-                          str(time.ctime()).replace(' ', '_') + ".pth"
+    # save_model_filename = model_title + "_epoch_" + str(args.epochs) + "_" + \
+    #                       str(time.ctime()).replace(' ', '_') + ".pth"
+    save_model_filename = model_title + f"_epoch_{args.epochs}_{time.strftime('%Y_%m_%d_%H_%M_%S')}.pth"
     save_model_path = os.path.join(args.save_dir, save_model_filename)
     if torch.cuda.device_count() > 1:
         torch.save(net.module.state_dict(), save_model_path)
@@ -186,7 +201,7 @@ def train(args):
     print("Running testset")
     print('===> Loading testset')
     test_set = HSTestData(test_data_dir)
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False,drop_last=True)
     print('===> Start testing')
     net.eval().cuda()
     with torch.no_grad():
@@ -207,12 +222,17 @@ def train(args):
             indices[index] = indices[index] / test_number
 
     # save_dir = "/data/test.npy"
-    save_dir = model_title + '.npy'
+    save_dir = "/data/"+model_title + '.npy'
+    save_dir = '/data/Chikusei_SSPSR_Blocks=3_Subs8_Ovls2_Feats=256.npy'
+    save_path = os.path.dirname(save_dir)  # Get the directory part of the path
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)  # Create the directory if it doesn't exist
     np.save(save_dir, output)
     print("Test finished, test results saved to .npy file at ", save_dir)
     print(indices)
-
-    QIstr = model_title+'_'+str(time.ctime())+ ".txt"
+    current_time = datetime.now().strftime('%a %b %d %H-%M-%S %Y')  # Replace ':' with '-'
+    QIstr = f"{model_title}_{current_time}.txt"
+    # QIstr = model_title+'_'+str(time.ctime())+ ".txt"
     json.dump(indices, open(QIstr, 'w'))
 
 def sum_dict(a, b):
@@ -236,6 +256,9 @@ def validate(args, loader, model, criterion):
     epoch_meter.reset()
     with torch.no_grad():
         for i, (ms, lms, gt) in enumerate(loader):
+            if ms is None or lms is None or gt is None:
+                print(f"Skipping batch {i} due to invalid data.")
+                continue
             ms, lms, gt = ms.to(device), lms.to(device), gt.to(device)
             # y = model(ms)            
             y = model(ms, lms)
@@ -246,18 +269,25 @@ def validate(args, loader, model, criterion):
     # back to training mode
     model.train()
     return epoch_meter.value()[0]
+def collate_fn(batch):
+    # Filter out invalid samples (None values)
+    batch = [sample for sample in batch if sample is not None]
+    if len(batch) == 0:
+        # Return an empty batch or some placeholder (adjust based on your logic)
+        return None
+    return default_collate(batch)
 
 def test(args):
     device = torch.device("cuda" if args.cuda else "cpu")
     print('===> Loading testset')
     test_set = HSTestData(test_data_dir)
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_set, batch_size=1, shuffle=False,drop_last=True)
     print('===> Start testing')
     with torch.no_grad():
         epoch_meter = meter.AverageValueMeter()
         epoch_meter.reset()
         # loading model
-        model = SSPSR(n_subs=n_subs, n_ovls=n_ovls, n_colors=colors, n_blocks=n_blocks, n_feats=n_feats, n_scale=n_scale, res_scale=0.1, use_share=True, conv=default_conv)
+        model = SSPSR(n_subs=args.n_subs, n_ovls=args.n_ovls, n_colors=args.colors, n_blocks=args.n_blocks, n_feats=args.n_feats, n_scale=args.n_scale, res_scale=0.1, use_share=True, conv=default_conv)
         state_dict = torch.load(model_name)
         model.load_state_dict(state_dict)
         model.to(device).eval()
@@ -280,7 +310,8 @@ def test(args):
             indices[index] = indices[index] / test_number
 
     # save_dir = "/data/test.npy"
-    save_dir = result_path + model_title + '.npy'
+    # 3dlt hena
+    save_dir = "/data/" + args.model_title + '.npy'
     np.save(save_dir, output)
     print("Test finished, test results saved to .npy file at ", save_dir)
     print(indices)

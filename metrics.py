@@ -10,8 +10,9 @@
 """
 import numpy as np
 from scipy.signal import convolve2d
-from skimage.measure import compare_psnr, compare_ssim
-
+# from skimage.measure import compare_psnr, compare_ssim
+import cv2 
+from skimage.metrics import structural_similarity as ssim
 def compare_ergas(x_true, x_pred, ratio):
     """
     Calculate ERGAS, ERGAS offers a global indication of the quality of fused image.The ideal value is 0.
@@ -103,9 +104,9 @@ def compare_mpsnr(x_true, x_pred, data_range):
     """
     x_true, x_pred = x_true.astype(np.float32), x_pred.astype(np.float32)
     channels = x_true.shape[2]
-    total_psnr = [compare_psnr(im_true=x_true[:, :, k], im_test=x_pred[:, :, k], data_range=data_range)
-                  for k in range(channels)]
-
+    # total_psnr = [compare_psnr(im_true=x_true[:, :, k], im_test=x_pred[:, :, k], data_range=data_range)
+    #               for k in range(channels)]
+    total_psnr = [cv2.PSNR(x_true[:,:,k],x_pred[:,:,k]) for k in range(channels)]
     return np.mean(total_psnr)
 
 
@@ -118,9 +119,9 @@ def compare_mssim(x_true, x_pred, data_range, multidimension):
     :param multidimension:
     :return:
     """
-    mssim = [compare_ssim(X=x_true[:, :, i], Y=x_pred[:, :, i], data_range=data_range, multidimension=multidimension)
-            for i in range(x_true.shape[2])]
-
+    # mssim = [compare_ssim(X=x_true[:, :, i], Y=x_pred[:, :, i], data_range=data_range, multidimension=multidimension)
+    #         for i in range(x_true.shape[2])]
+    mssim = [ssim(x_true[:,:,i],x_pred[:,:,i],data_range=data_range,multichannel = multidimension) for i in range(x_true.shape[2])]
     return np.mean(mssim)
 
 

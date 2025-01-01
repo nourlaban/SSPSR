@@ -1,0 +1,86 @@
+# Data files
+data/
+datasets/
+*.csv
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npy
+*.npz
+
+# Model files and checkpoints
+models/
+checkpoints/
+*.pt
+*.pth
+*.weights
+*.pb
+*.onnx
+*.tflite
+*.savedmodel
+*.model
+
+# Environment and package management
+venv/
+env/
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+*.log
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_meta
+jupyter_execute/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Experiment tracking and logs
+runs/
+logs/
+tensorboard/
+wandb/
+mlruns/
+lightning_logs/
+
+# Generated outputs
+results/
+outputs/
+figures/
+plots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+
+# Project specific config files
+config.yaml
+config.json
+parameters.json
+*.cfg
+
+# Large files over certain size (uncomment if needed)
+# *.tar.gz
+# *.zip
+# *.rar
+
+
+data/
+datasets/
+figs/
+mcodes/

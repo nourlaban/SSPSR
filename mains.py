@@ -66,9 +66,10 @@ def main():
     # test_parser.add_argument("--test_dir", type=str, required=True, help="directory of testset")
     # test_parser.add_argument("--model_dir", type=str, required=True, help="directory of trained model")
     import pdb;pdb.set_trace()
+    # test
 
     args = main_parser.parse_args()
-    print(args.gpus)
+    # print(args.gpus)
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
     if args.subcommand is None:
         print("ERROR: specify either train or test")
